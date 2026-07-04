@@ -1,0 +1,36 @@
+{==================================================================}
+{ OBV 能量潮确认 - 辅助副图                                           }
+{ 配合「机构资金雷达」验证资金持续流入/流出方向                          }
+{ 不使用未来函数                                                       }
+{==================================================================}
+
+N:=20;
+M:=60;
+
+OBV增量:=IF(C>REF(C,1),VOL,IF(C<REF(C,1),-VOL,0));
+OBV:SUM(OBV增量,0),COLORWHITE,LINETHICK2;
+OBVMA:MA(OBV,M),COLORYELLOW,LINETHICK1;
+
+{OBV 相对强弱: 当前 OBV 在 N 日区间的位置 0~100}
+OBV高:=HHV(OBV,N);
+OBV低:=LLV(OBV,N);
+OBV位置:IF(OBV高>OBV低,(OBV-OBV低)/(OBV高-OBV低)*100,50),NODRAW;
+
+{创新高/新低标记}
+OBV新高:=OBV>=HHV(OBV,N);
+OBV新低:=OBV<=LLV(OBV,N);
+
+STICKLINE(OBV新高,OBV,OBVMA,2,0),COLORRED;
+STICKLINE(OBV新低,OBV,OBVMA,2,0),COLOR00AA00;
+
+DRAWICON(OBV新高,OBV,1);
+DRAWICON(OBV新低,OBV,2);
+
+DRAWTEXT(OBV新高,OBV,'新高'),COLORRED;
+DRAWTEXT(OBV新低,OBV,'新低'),COLOR00AA00;
+
+{OBV 与均线金叉死叉}
+金叉:=CROSS(OBV,OBVMA);
+死叉:=CROSS(OBVMA,OBV);
+DRAWTEXT(金叉,OBV,'金叉'),COLORRED;
+DRAWTEXT(死叉,OBV,'死叉'),COLOR00AA00;

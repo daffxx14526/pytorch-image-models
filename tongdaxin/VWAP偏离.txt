@@ -1,0 +1,29 @@
+{==================================================================}
+{ VWAP 偏离 - 辅助副图                                                 }
+{ 衡量收盘价相对当日成交量加权均价的偏离程度                             }
+{ 配合「机构资金雷达」验证尾盘抢筹/压盘                                  }
+{ 不使用未来函数 (日线用 AMOUNT/VOL 近似当日均价)                       }
+{==================================================================}
+
+N:=20;
+
+{当日 VWAP 近似: AMOUNT 为元, VOL 为手}
+VWAP:IF(VOL>0,AMOUNT/(VOL*100),C),COLORWHITE,LINETHICK1;
+
+{偏离度 %: 正值=收盘高于均价(抢筹), 负值=收盘低于均价(压盘)}
+偏离:(C-VWAP)/VWAP*100,COLORSTICK;
+偏离MA:MA(偏离,N),COLORYELLOW,LINETHICK1;
+
+零轴:0,COLOR808080,DOTLINE;
+强正:2,COLOR404040,DOTLINE;
+强负:-2,COLOR404040,DOTLINE;
+
+{持续正偏离: 可能尾盘抢筹}
+抢筹:=偏离>0 AND REF(偏离,1)>0 AND REF(偏离,2)>0;
+压盘:=偏离<0 AND REF(偏离,1)<0 AND REF(偏离,2)<0;
+
+STICKLINE(抢筹,偏离,0,2,0),COLORRED;
+STICKLINE(压盘,偏离,0,2,0),COLOR00AA00;
+
+DRAWTEXT(抢筹 AND 偏离>2,偏离,'抢筹'),COLORRED;
+DRAWTEXT(压盘 AND 偏离<-2,偏离,'压盘'),COLOR00AA00;
