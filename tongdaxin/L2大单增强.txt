@@ -1,0 +1,59 @@
+{==================================================================}
+{ L2 大单雷达 - 独立辅助副图 (需 Level-2 权限)                         }
+{ 建议作为副图2/3 与「机构资金雷达 L2版」配合使用                        }
+{ 不使用未来函数                                                       }
+{==================================================================}
+
+N:=5;
+M:=20;
+大买阈值:=0.15;
+大卖阈值:=-0.15;
+
+{--- L2 核心数据 ---}
+外盘:=DYNAINFO(22);
+内盘:=DYNAINFO(23);
+L2总量:=外盘+内盘;
+L2净比:IF(L2总量>0,(外盘-内盘)/L2总量,0),NODRAW;
+L2买卖比:IF(内盘>0,外盘/内盘,1),NODRAW;
+
+{--- 主输出: 净流比柱 + 均线 ---}
+净流比:L2净比*100,COLORSTICK;
+净流MA:MA(L2净比*100,N),COLORWHITE,LINETHICK2;
+净流MA20:MA(L2净比*100,M),COLORYELLOW,LINETHICK1;
+
+零轴:0,COLOR808080,DOTLINE;
+大买线:大买阈值*100,COLOR404040,DOTLINE;
+大卖线:大卖阈值*100,COLOR404040,DOTLINE;
+
+{--- 买卖比曲线 (缩放到 ±50 便于同图对比) ---}
+买卖比线:(L2买卖比-1)*50,COLORCYAN,LINETHICK1;
+
+{--- 信号判定 ---}
+大买:=L2净比>大买阈值;
+大卖:=L2净比<大卖阈值;
+持续买:=L2净比>0 AND REF(L2净比,1)>0 AND REF(L2净比,2)>0;
+持续卖:=L2净比<0 AND REF(L2净比,1)<0 AND REF(L2净比,2)<0;
+加速买:=L2净比>REF(L2净比,1) AND REF(L2净比,1)>REF(L2净比,2) AND L2净比>0;
+加速卖:=L2净比<REF(L2净比,1) AND REF(L2净比,1)<REF(L2净比,2) AND L2净比<0;
+金叉:=CROSS(L2净比*100,净流MA);
+死叉:=CROSS(净流MA,L2净比*100);
+
+{--- 着色强化 ---}
+STICKLINE(大买,净流比,0,2,0),COLORRED;
+STICKLINE(大卖,净流比,0,2,0),COLOR00AA00;
+STICKLINE(持续买 AND 净流比>0,净流比,0,3,0),COLORMAGENTA;
+STICKLINE(持续卖 AND 净流比<0,净流比,0,3,0),COLOR00FF00;
+
+{--- 标记 ---}
+DRAWICON(大买,净流比,1);
+DRAWICON(大卖,净流比,2);
+DRAWTEXT(大买,净流比,'大买'),COLORRED;
+DRAWTEXT(大卖,净流比,'大卖'),COLOR00AA00;
+DRAWTEXT(加速买 AND 大买,净流比*1.1,'加速买'),COLORMAGENTA;
+DRAWTEXT(加速卖 AND 大卖,净流比*1.1,'加速卖'),COLOR00FF00;
+DRAWTEXT(金叉,净流比,'金叉'),COLORRED;
+DRAWTEXT(死叉,净流比,'死叉'),COLOR00AA00;
+
+{--- 内外盘绝对量 (归一化显示, 可选) ---}
+外盘比:IF(L2总量>0,外盘/L2总量*100,50),NODRAW;
+内盘比:IF(L2总量>0,内盘/L2总量*100,50),NODRAW;
