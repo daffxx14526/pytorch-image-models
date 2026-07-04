@@ -268,6 +268,7 @@ All model architecture families include variants with pretrained weights. There 
 * CoAtNet (Convolution and Attention) - https://arxiv.org/abs/2106.04803
 * ConvNeXt - https://arxiv.org/abs/2201.03545
 * ConvNeXt-V2 - http://arxiv.org/abs/2301.00808
+* CVoCA-style Complex-Valued Convolution - https://www.nature.com/articles/s41467-024-55321-8
 * ConViT (Soft Convolutional Inductive Biases Vision Transformers)- https://arxiv.org/abs/2103.10697
 * CspNet (Cross-Stage Partial Networks) - https://arxiv.org/abs/1911.11929
 * DeiT - https://arxiv.org/abs/2012.12877
