@@ -116,11 +116,13 @@ SL2:=SL2A*0.45+SL2B*0.40+SL2C*0.15;
 
 {--- 加权综合评分 0~100 ---}
 {启用L2=1: 七维度 88% + L2 12%; 启用L2=0: 原七维度 100%}
-L2修正:=IF(启用L2=1 AND L2大卖 AND 涨幅<3 AND 量比>1.1,-0.08,
-    IF(启用L2=1 AND L2大买 AND L2持续买,0.05,0));
+跌势罚:=IF(涨幅<-3,-0.12,IF(涨幅<-1,-0.06,IF(涨幅>3,0.04,0)));
+L2修正:=IF(启用L2=1 AND L2大卖 AND 涨幅<3 AND 量比>1.05,-0.10,
+    IF(启用L2=1 AND L2大买 AND L2持续买,0.06,
+    IF(启用L2=1 AND L2持续卖,-0.06,0)));
 原始分:=IF(启用L2=1,
-    S1*0.22+S2*0.18+S3*0.13+S4*0.13+S5*0.09+S6*0.09+S7*0.04+SL2*L2权重+L2修正,
-    S1*0.25+S2*0.20+S3*0.15+S4*0.15+S5*0.10+S6*0.10+S7*0.05);
+    S1*0.22+S2*0.18+S3*0.13+S4*0.13+S5*0.09+S6*0.09+S7*0.04+SL2*L2权重+L2修正+跌势罚,
+    S1*0.25+S2*0.20+S3*0.15+S4*0.15+S5*0.10+S6*0.10+S7*0.05+跌势罚);
 
 资金强度:(原始分+1)*50,NODRAW;
 强度均线:MA(资金强度,3),COLORWHITE,LINETHICK2;
@@ -131,41 +133,30 @@ L2强度线:IF(启用L2=1,L2净比*50+50,50),COLOR00FFFF,LINETHICK1;
 加速:加速线,COLOR808080,DOTLINE;
 中轴:50,COLOR404040,DOTLINE;
 
-{--- 四色阶段判定 (L2 增强规则树) ---}
-{PHASE: 1=出货绿 2=洗盘黄 3=吸筹红 4=拉升紫 0=震荡灰}
+{--- 阶段着色: 按评分区间, 取消灰色 ---}
+{1绿=流出 2黄=洗盘 3红=吸筹 4紫=拉升}
+绿线:=42;
+黄线:=52;
+红线:=68;
+紫线:=82;
+L2强卖:=启用L2=1 AND (L2大卖 OR L2持续卖 OR L2净比<-0.03);
+L2强买:=启用L2=1 AND (L2大买 OR L2持续买 OR L2净比>0.03);
+出货形态:=放量下跌 OR 高位大阴 OR (涨幅<-1 AND 量比>1.1);
 
-放量下跌:=量比>1.3 AND 涨幅<-2;
-高位大阴:=C<REF(C,1) AND (REF(C,1)-C)/REF(C,1)*100>3 AND C>(MA60*1.05);
-量波动:=ABS(VOL-均量)/均量>0.3;
-振幅收窄:=振幅<均振幅*0.8;
-L2出货:=启用L2=1 AND (L2大卖 OR L2持续卖) AND 量比>1.05 AND 涨幅<涨幅阈值+2;
-L2吸筹:=启用L2=1 AND (L2大买 OR L2持续买 OR L2净比>0.03) AND 量比>=0.95 AND 涨幅<(涨幅阈值+2);
-L2拉升:=启用L2=1 AND L2净比>0.05 AND L2净比>=L2净均 AND C>MA20;
-非L2大卖:=L2大卖=0;
+PHASE:=IF(L2强卖 OR 出货形态 OR 资金强度<绿线,1,
+    IF(资金强度>=紫线 OR (L2强买 AND 资金强度>=75 AND C>MA20),4,
+    IF(资金强度>=红线 OR (L2强买 AND 资金强度>=62),3,
+    IF(资金强度>=黄线,2,1))));
 
-{严格阶段: 典型形态}
-PHASE严:=IF((资金强度>=关注线 OR (L2拉升 AND 资金强度>=60)) AND (OBV新高 OR L2净比>0.05) AND C>MA20,4,
-    IF(资金强度>=55 AND (振幅收窄 OR 量波动) AND 非L2大卖,2,
-    IF((资金强度<=35 OR L2出货) AND (放量下跌 OR 高位大阴 OR (L2持续卖 AND C>(MA60*1.02))),1,
-    IF((资金强度>=45 OR L2吸筹) AND 量比>=(量增阈值*0.9) AND 涨幅<(涨幅阈值+2),3,0))));
-
-{宽松兜底: 严格未命中时按评分区间着色}
-PHASE宽:=IF(资金强度>=加速线 AND C>MA20,4,
-    IF(资金强度>=关注线,3,
-    IF(资金强度>=55,2,
-    IF(资金强度<=30,1,0))));
-
-PHASE:=IF(PHASE严>0,PHASE严,PHASE宽);
-
-{--- 四色柱状图 (灰柱仅保留评分45-55中性区) ---}
-STICKLINE(PHASE=1,资金强度,0,3,0),COLOR00AA00;
+{--- 四色柱状图 (无灰色) ---}
+STICKLINE(PHASE=1,资金强度,0,3,0),COLOR00CC00;
 STICKLINE(PHASE=2,资金强度,0,3,0),COLORYELLOW;
 STICKLINE(PHASE=3,资金强度,0,3,0),COLORRED;
 STICKLINE(PHASE=4,资金强度,0,3,0),COLORMAGENTA;
-STICKLINE(PHASE=0 AND 资金强度>=45,资金强度,0,3,0),COLOR888888;
-STICKLINE(PHASE=0 AND 资金强度<45,资金强度,0,3,0),COLOR555555;
 
 {--- 异动标记 ---}
+放量下跌:=量比>1.3 AND 涨幅<-2;
+高位大阴:=C<REF(C,1) AND (REF(C,1)-C)/REF(C,1)*100>3 AND C>(MA60*1.05);
 上穿关注:=CROSS(资金强度,关注线);
 红转紫:=PHASE=4 AND REF(PHASE,1)=3;
 紫转绿:=PHASE=1 AND REF(PHASE,1)=4 AND (放量下跌 OR L2大卖);
@@ -182,10 +173,9 @@ DRAWTEXT(L2共振买,资金强度*1.08,'L2买'),COLORRED;
 DRAWTEXT(L2共振卖,资金强度*0.85,'L2卖'),COLOR00AA00;
 
 {--- 最新阶段文字 ---}
-DRAWTEXT(ISLASTBAR AND PHASE=1,资金强度,'出货'),COLOR00AA00;
+DRAWTEXT(ISLASTBAR AND PHASE=1,资金强度,'出货'),COLOR00CC00;
 DRAWTEXT(ISLASTBAR AND PHASE=2,资金强度,'洗盘'),COLORYELLOW;
 DRAWTEXT(ISLASTBAR AND PHASE=3,资金强度,'吸筹'),COLORRED;
 DRAWTEXT(ISLASTBAR AND PHASE=4,资金强度,'拉升'),COLORMAGENTA;
-DRAWTEXT(ISLASTBAR AND PHASE=0,资金强度,'震荡'),COLOR888888;
 DRAWTEXT(ISLASTBAR AND 有L2数据,资金强度*0.88,'L2'),COLOR00FFFF;
 DRAWTEXT(ISLASTBAR AND 有L2数据=0,资金强度*0.88,'估价'),COLORYELLOW;
