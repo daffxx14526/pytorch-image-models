@@ -40,7 +40,7 @@ OBV新高:=OBV值>=HHV(OBV值,N3);
 L2总量:=外盘+内盘;
 L2净比:=IF(L2总量>0,(外盘-内盘)/L2总量,0);
 L2买卖比:=IF(内盘>0,外盘/内盘,1);
-L2净比MA:=MA(L2净比,N4);
+L2净均:=MA(L2净比,N4);
 L2大买:=L2净比>0.15;
 L2大卖:=L2净比<-0.15;
 L2持续买:=L2净比>0 AND REF(L2净比,1)>0 AND REF(L2净比,2)>0;
@@ -94,8 +94,8 @@ SL2B:=IF(L2净比>0.15,0.8,
     IF(L2净比<-0.05,-0.4,0))));
 SL2C:=IF(L2加速买,0.7,
     IF(L2加速卖,-0.7,
-    IF(L2净比>L2净比MA AND L2净比>0,0.3,
-    IF(L2净比<L2净比MA AND L2净比<0,-0.3,0))));
+    IF(L2净比>L2净均 AND L2净比>0,0.3,
+    IF(L2净比<L2净均 AND L2净比<0,-0.3,0))));
 SL2:=SL2A*0.45+SL2B*0.40+SL2C*0.15;
 
 {--- 加权综合评分 0~100 ---}
@@ -108,7 +108,7 @@ L2修正:=IF(启用L2=1 AND L2大卖 AND 涨幅<3 AND 量比>1.1,-0.08,
 
 资金强度:(原始分+1)*50,NODRAW;
 强度均线:MA(资金强度,3),COLORWHITE,LINETHICK2;
-L2强度线:IF(启用L2=1,L2净比*50+50,DRAWNULL),COLORCYAN,LINETHICK1;
+L2强度线:IF(启用L2=1,L2净比*50+50,50),COLOR00FFFF,LINETHICK1;
 
 {--- 参考线 ---}
 关注:关注线,COLOR808080,DOTLINE;
@@ -119,17 +119,18 @@ L2强度线:IF(启用L2=1,L2净比*50+50,DRAWNULL),COLORCYAN,LINETHICK1;
 {PHASE: 1=出货绿 2=洗盘黄 3=吸筹红 4=拉升紫 0=震荡灰}
 
 放量下跌:=量比>1.3 AND 涨幅<-2;
-高位大阴:=C<REF(C,1) AND (REF(C,1)-C)/REF(C,1)*100>3 AND C>MA60*1.05;
+高位大阴:=C<REF(C,1) AND (REF(C,1)-C)/REF(C,1)*100>3 AND C>(MA60*1.05);
 量波动:=ABS(VOL-均量)/均量>0.3;
 振幅收窄:=振幅<均振幅*0.8;
 L2出货:=启用L2=1 AND (L2大卖 OR L2持续卖) AND 量比>1.1 AND 涨幅<涨幅阈值;
-L2吸筹:=启用L2=1 AND (L2大买 OR L2持续买) AND 量比>=1 AND 涨幅<涨幅阈值+1;
-L2拉升:=启用L2=1 AND L2净比>0.08 AND L2净比>=L2净比MA AND C>MA20;
+L2吸筹:=启用L2=1 AND (L2大买 OR L2持续买) AND 量比>=1 AND 涨幅<(涨幅阈值+1);
+L2拉升:=启用L2=1 AND L2净比>0.08 AND L2净比>=L2净均 AND C>MA20;
+非L2大卖:=L2大卖=0;
 
 PHASE:=IF((资金强度>=关注线 OR (L2拉升 AND 资金强度>=65)) AND OBV新高 AND C>MA20,4,
-    IF(资金强度>=55 AND 振幅收窄 AND 量波动 AND NOT L2大卖,2,
-    IF((资金强度<=35 OR L2出货) AND (放量下跌 OR 高位大阴 OR (L2持续卖 AND C>MA60*1.02)),1,
-    IF((资金强度>=45 OR L2吸筹) AND 量比>=量增阈值*0.95 AND 涨幅<涨幅阈值+1,3,0))));
+    IF(资金强度>=55 AND 振幅收窄 AND 量波动 AND 非L2大卖,2,
+    IF((资金强度<=35 OR L2出货) AND (放量下跌 OR 高位大阴 OR (L2持续卖 AND C>(MA60*1.02))),1,
+    IF((资金强度>=45 OR L2吸筹) AND 量比>=(量增阈值*0.95) AND 涨幅<(涨幅阈值+1),3,0))));
 
 {--- 四色柱状图 ---}
 STICKLINE(PHASE=1,资金强度,0,3,0),COLOR00AA00;
@@ -148,7 +149,7 @@ L2共振卖:=启用L2=1 AND L2大卖 AND PHASE=1;
 DRAWICON(上穿关注,资金强度,1);
 DRAWICON(L2共振买,资金强度*1.05,1);
 DRAWICON(L2共振卖,资金强度*0.92,2);
-DRAWTEXT(上穿关注,资金强度*0.95,'↑关注'),COLORRED;
+DRAWTEXT(上穿关注,资金强度*0.95,'关注'),COLORRED;
 DRAWTEXT(红转紫,资金强度*1.02,'加速'),COLORMAGENTA;
 DRAWTEXT(紫转绿,资金强度*0.90,'减仓'),COLOR00AA00;
 DRAWTEXT(L2共振买,资金强度*1.08,'L2买'),COLORRED;
